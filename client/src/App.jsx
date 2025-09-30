@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiTag, FiBox, FiUser, FiFileText, FiSettings, FiLogOut } from 'react-icons/fi'
+import { FiTag, FiBox, FiUser, FiFileText, FiSettings, FiLogOut, FiClock } from 'react-icons/fi'
 import ReactDOM from 'react-dom/client'
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -40,7 +40,7 @@ export default function App(){
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-2">
           <h1 className="font-bold text-lg tracking-tight flex-1">Cold Drink Billing</h1>
           {token ? (
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-1 flex-nowrap overflow-x-auto">
               <NavLink to="/" className={({isActive})=>`nav-link ${isActive?'nav-link-active':''}`}>Billing</NavLink>
               <NavLink to="/products" className={({isActive})=>`nav-link ${isActive?'nav-link-active':''}`}>Products</NavLink>
               <NavLink to="/customers" className={({isActive})=>`nav-link ${isActive?'nav-link-active':''}`}>Customers</NavLink>
@@ -80,6 +80,10 @@ export default function App(){
         <NavLink to="/customers" className={({isActive})=>`bottom-nav-item ${isActive?'bottom-nav-item-active':''}`}>
           <FiUser size={20} />
           <span className="text-xs">Customers</span>
+        </NavLink>
+        <NavLink to="/pending" className={({isActive})=>`bottom-nav-item ${isActive?'bottom-nav-item-active':''}`}>
+          <FiClock size={20} />
+          <span className="text-xs">Pending</span>
         </NavLink>
         <NavLink to="/invoices" className={({isActive})=>`bottom-nav-item ${isActive?'bottom-nav-item-active':''}`}>
           <FiFileText size={20} />
