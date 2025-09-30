@@ -5,7 +5,7 @@ export default function Settings() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/settings/upi')
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/upi`)
       const data = await res.json()
       setSettings(data)
     } catch (err) {

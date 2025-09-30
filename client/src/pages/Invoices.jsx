@@ -78,7 +78,7 @@ export default function Invoices() {
   useEffect(() => {
     let isMounted = true
     setLoading(true)
-    fetch('/api/invoices')
+    fetch(`${import.meta.env.VITE_API_URL}/api/invoices`)
       .then((r) => r.json())
       .then((data) => {
         if (isMounted) setInvoices(data || [])

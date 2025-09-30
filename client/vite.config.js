@@ -6,15 +6,5 @@ import dotenv from 'dotenv'
 dotenv.config()
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      // proxy all requests starting with /api to your backend
-      '/api': {
-        target: process.env.VITE_API_URL, // using .env value
-        changeOrigin: true,
-        secure: false,
-      },
-    },
-  },
+  plugins: [react()]
 })

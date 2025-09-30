@@ -13,7 +13,7 @@ export default function Pending() {
   useEffect(() => {
     let isMounted = true
     setLoading(true)
-    fetch('/api/customers/pending')
+    fetch(`${import.meta.env.VITE_API_URL}/api/customers/pending`)
       .then(async (r) => {
         if (!r.ok) throw new Error(await r.text())
         return r.json()
@@ -30,7 +30,7 @@ export default function Pending() {
   useEffect(() => {
     let isMounted = true
     setLoadingTxns(true)
-    fetch('/api/transactions?limit=50')
+    fetch(import.meta.env.VITE_API_URL+'/api/transactions?limit=50')
       .then(async (r)=>{ if(!r.ok) throw new Error(await r.text()); return r.json() })
       .then((data)=>{ if(isMounted) setTxns(data||[]) })
       .catch(()=>{})
@@ -49,54 +49,64 @@ export default function Pending() {
   })
 
   return (
-    <div className="bg-white p-4 rounded shadow space-y-6">
+    <div className="bg-white p-4 rounded shadow space-y-8">
       {/* Transactions section */}
-      <div>
+      <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">Transactions</h2>
+          <h2 className="font-semibold tracking-tight">Recent Transactions</h2>
           <button className="btn" onClick={async ()=>{
-            try{ setLoadingTxns(true); const r = await fetch('/api/transactions?limit=50'); if(!r.ok) throw new Error(await r.text()); setTxns(await r.json()) }
+            try{ setLoadingTxns(true); const r = await fetch(`${import.meta.env.VITE_API_URL}/api/transactions?limit=50`); if(!r.ok) throw new Error(await r.text()); setTxns(await r.json()) }
             catch(_){ toast.error('Failed to refresh transactions') }
             finally{ setLoadingTxns(false) }
-          }}>{loadingTxns? 'Refreshing...' : 'Refresh'}</button>
+          }}>{loadingTxns? 'Refreshing…' : 'Refresh'}</button>
         </div>
-        {loadingTxns && <div className="text-sm text-gray-500">Loading...</div>}
+        {loadingTxns && <div className="text-sm text-gray-500">Loading…</div>}
         {!loadingTxns && txns.length===0 && (
           <div className="text-sm text-gray-500">No transactions</div>
         )}
         {!loadingTxns && txns.length>0 && (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto border rounded">
             <table className="table-base w-full">
-              <thead>
-                <tr className="text-xs text-slate-500">
-                  <th className="py-2 pr-3">Date</th>
-                  <th className="py-2 pr-3">Customer</th>
-                  <th className="py-2 pr-3">Type</th>
-                  <th className="py-2 pr-3 text-right">Amount</th>
+              <thead className="bg-slate-50 sticky top-0">
+                <tr className="text-xs text-slate-600">
+                  <th className="py-2 px-3 text-left">Date</th>
+                  <th className="py-2 px-3 text-left">Customer</th>
+                  <th className="py-2 px-3 text-left">Type</th>
+                  <th className="py-2 px-3 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {txns.map(t=> (
-                  <tr key={t._id} className="border-t">
-                    <td className="py-2 pr-3 text-xs">{t.date? new Date(t.date).toLocaleString() : ''}</td>
-                    <td className="py-2 pr-3 text-sm">{t.customer?.name || ''} {t.customer?.companyName? `· ${t.customer.companyName}`:''} <span className="text-xs text-gray-500">{t.customer?.phone? `· ${t.customer.phone}`:''}</span></td>
-                    <td className="py-2 pr-3 text-xs uppercase">{t.type}</td>
-                    <td className="py-2 pr-3 text-right">₹ {Number(t.amount||0).toFixed(2)}</td>
-                  </tr>
-                ))}
+                {txns.map(t=> {
+                  const type = String(t.type||'').toLowerCase()
+                  const typeClass = type==='payment' ? 'bg-green-100 text-green-700 border-green-200' : type==='sale' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-700 border-slate-200'
+                  const amtClass = type==='payment' ? 'text-green-700' : type==='sale' ? 'text-slate-900' : 'text-slate-900'
+                  return (
+                    <tr key={t._id} className="border-t">
+                      <td className="py-2 px-3 text-xs whitespace-nowrap">{t.date? new Date(t.date).toLocaleString() : ''}</td>
+                      <td className="py-2 px-3 text-sm">
+                        <div className="font-medium">{t.customer?.name || ''}{t.customer?.companyName? ` · ${t.customer.companyName}`:''}</div>
+                        <div className="text-xs text-gray-500">{t.customer?.phone || ''}</div>
+                      </td>
+                      <td className="py-2 px-3 text-xs">
+                        <span className={`inline-block px-2 py-0.5 rounded-full border ${typeClass}`}>{t.type}</span>
+                      </td>
+                      <td className={`py-2 px-3 text-right font-semibold ${amtClass}`}>₹ {Number(t.amount||0).toFixed(2)}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Pending section */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">Pending Customers</h2>
+      <section>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="font-semibold tracking-tight">Pending Customers</h2>
           <input
-            className="input w-64"
-            placeholder="Search name/phone/company"
+            className="input w-64 max-w-full"
+            placeholder="Search name / phone / company"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -108,13 +118,14 @@ export default function Pending() {
       {!loading && filtered.length > 0 && (
         <div className="divide-y">
           {filtered.map((c) => (
-            <div key={c._id} className="py-3 grid grid-cols-1 md:grid-cols-5 gap-2 items-center">
+            <div key={c._id} className="py-3 grid grid-cols-1 md:grid-cols-5 gap-3 items-center">
               <div className="md:col-span-2">
                 <div className="font-medium text-sm">
                   {c.name} {c.companyName ? `· ${c.companyName}` : ''}
                 </div>
-                <div className="text-xs text-gray-500">
-                  {c.phone} {c.address ? `· ${c.address}` : ''}
+                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                  {c.phone && <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">{c.phone}</span>}
+                  {c.address && <span className="truncate max-w-[240px]">{c.address}</span>}
                 </div>
               </div>
               <div className="text-sm text-red-600 font-semibold">₹ {Number(c.amountToPaid || 0).toFixed(2)}</div>
@@ -146,7 +157,7 @@ export default function Pending() {
                     if(!proceed){ toast.info('Cancelled'); return }
                     try{
                       setSavingFor(c.phone)
-                      const r = await fetch(`/api/customers/${encodeURIComponent(c.phone)}/amount`, {
+                      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/customers/${encodeURIComponent(c.phone)}/amount`, {
                         method:'PATCH',
                         headers:{'Content-Type':'application/json'},
                         body: JSON.stringify({ amount: amt })
@@ -158,7 +169,7 @@ export default function Pending() {
                       setPayInputs(prev=> ({...prev, [c.phone]: ''}))
                       toast.success('Payment applied')
                       // Refresh transactions after payment
-                      try{ const tr = await fetch('/api/transactions?limit=50'); if(tr.ok) setTxns(await tr.json()) } catch(_){}
+                      try{ const tr = await fetch(import.meta.env.VITE_API_URL + '/api/transactions?limit=50'); if(tr.ok) setTxns(await tr.json()) } catch(_){}
                     }catch(e){
                       toast.error(e?.message || 'Failed to apply payment')
                     }finally{
@@ -174,7 +185,7 @@ export default function Pending() {
           ))}
         </div>
       )}
+    </section>
     </div>
-  </div>
   )
 }

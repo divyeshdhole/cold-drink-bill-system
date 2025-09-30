@@ -19,7 +19,7 @@ export default function Customers() {
     let isMounted = true
     const fetchCustomers = async () => {
       try {
-        const res = await fetch(`/api/customers?q=${encodeURIComponent(q)}`)
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/customers?q=${encodeURIComponent(q)}`)
         const data = await res.json()
         if (isMounted) setCustomers(data)
       } catch (err) {
@@ -42,7 +42,7 @@ export default function Customers() {
     if (selected?.phone) params.set('phone', selected.phone)
     if (selected?.name) params.set('name', selected.name)
     if (selected?.companyName) params.set('company', selected.companyName)
-    fetch(`/api/invoices/by-customer/search?${params.toString()}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/invoices/by-customer/search?${params.toString()}`)
       .then(async (r) => {
         if (!r.ok) throw new Error(await r.text())
         const data = await r.json()
@@ -57,7 +57,7 @@ export default function Customers() {
   // Load owner/settings for bill and QR (from backend only)
   useEffect(() => {
     let isMounted = true
-    fetch('/api/settings/upi')
+    fetch(`${import.meta.env.VITE_API_URL}/api/settings/upi`)
       .then(async (r)=>{ if(!r.ok) throw new Error(await r.text()); return r.json() })
         
       .then((data)=>{ if(isMounted) { setSettings(data); console.log(data) } })
@@ -69,7 +69,7 @@ export default function Customers() {
   useEffect(()=>{
     let isMounted = true
     if(selected?.phone){
-      fetch(`/api/invoices/due?phone=${encodeURIComponent(selected.phone)}`)
+      fetch(`${import.meta.env.VITE_API_URL}/api/invoices/due?phone=${encodeURIComponent(selected.phone)}`)
         .then(async (r)=>{ if(!r.ok) throw new Error(await r.text()); return r.json() })
         .then((data)=>{ if(isMounted) setDueData(data) })
         .catch(()=>{})
@@ -83,7 +83,7 @@ export default function Customers() {
     try{
       // Always refresh latest due before preview so values are up-to-date
       if(selected?.phone){
-        const r = await fetch(`/api/invoices/due?phone=${encodeURIComponent(selected.phone)}`)
+        const r = await fetch(`${import.meta.env.VITE_API_URL}/api/invoices/due?phone=${encodeURIComponent(selected.phone)}`)
         if(r.ok){ setDueData(await r.json()) }
       }
     } catch(_){}
@@ -96,7 +96,7 @@ export default function Customers() {
   async function patchStatus({ id, status, amountPaid, paymentRef }) {
     try {
       setUpdatingId(id)
-      const resp = await fetch(`/api/invoices/${id}/status`, {
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/invoices/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, amountPaid, paymentRef })
@@ -108,7 +108,7 @@ export default function Customers() {
         if (selected?.phone) params.set('phone', selected.phone)
         if (selected?.name) params.set('name', selected.name)
         if (selected?.companyName) params.set('company', selected.companyName)
-        const r = await fetch(`/api/invoices/by-customer/search?${params.toString()}`)
+        const r = await fetch(`${import.meta.env.VITE_API_URL}/api/invoices/by-customer/search?${params.toString()}`)
         if (r.ok) setByCustomer(await r.json())
       }
       toast.success('Marked as paid')

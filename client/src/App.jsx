@@ -40,6 +40,11 @@ export default function App(){
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-2">
           <h1 className="font-bold text-lg tracking-tight flex-1">Cold Drink Billing</h1>
           {token ? (
+            <>
+            {/* Mobile-only Logout button in header */}
+            <button className="md:hidden p-2 rounded hover:bg-slate-100 active:bg-slate-200" onClick={handleLogout} aria-label="Logout">
+              <FiLogOut size={20} />
+            </button>
             <div className="hidden md:flex items-center gap-1 flex-nowrap overflow-x-auto">
               <NavLink to="/" className={({isActive})=>`nav-link ${isActive?'nav-link-active':''}`}>Billing</NavLink>
               <NavLink to="/products" className={({isActive})=>`nav-link ${isActive?'nav-link-active':''}`}>Products</NavLink>
@@ -49,6 +54,7 @@ export default function App(){
               <NavLink to="/settings" className={({isActive})=>`nav-link ${isActive?'nav-link-active':''}`}>Settings</NavLink>
               <button className="nav-link" onClick={handleLogout} title="Logout">Logout</button>
             </div>
+            </>
           ) : (
             <div className="hidden" />
           )}
@@ -89,10 +95,7 @@ export default function App(){
           <FiFileText size={20} />
           <span className="text-xs">Invoices</span>
         </NavLink>
-        <button onClick={handleLogout} className={`bottom-nav-item`}>
-          <FiLogOut size={20} />
-          <span className="text-xs">Logout</span>
-        </button>
+        {/* Logout moved to header on mobile */}
       </nav>
       )}
     </div>

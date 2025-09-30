@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode.react'
 import { toast } from 'react-toastify'
+
 function money(n){ return (Number(n||0)).toFixed(2) }
 
 export default function Billing(){
@@ -18,7 +19,7 @@ export default function Billing(){
   useEffect(()=>{
     let isMounted = true
     setLoadingSettings(true)
-    fetch('/api/settings/upi')
+    fetch(import.meta.env.VITE_API_URL + '/api/settings/upi')
       .then(async (r)=>{
         if(!r.ok) throw new Error(await r.text())
         return r.json()
@@ -33,7 +34,7 @@ export default function Billing(){
   useEffect(()=>{
     let isMounted = true
     setLoadingProducts(true)
-    fetch('/api/products')
+    fetch(import.meta.env.VITE_API_URL + '/api/products')
       .then(async (r)=>{ if(!r.ok) throw new Error(await r.text()); return r.json() })
       .then((data)=>{ if(isMounted) setProducts(data) })
       .catch((e)=>{ console.warn('Load products failed:', e?.message) })
@@ -47,7 +48,7 @@ export default function Billing(){
     let isMounted = true
     ;(async ()=>{
       try{
-        const r = await fetch('/api/invoices/owner-stats')
+        const r = await fetch(import.meta.env.VITE_API_URL + '/api/invoices/owner-stats')
         if(!r.ok) throw new Error(await r.text())
         const data = await r.json()
         if(isMounted) setStats(data)
@@ -62,7 +63,7 @@ export default function Billing(){
     let isMounted = true
     if(customer.phone && customer.phone.length>=5){
       // get due data by customer model
-      const url = `/api/invoices/due?phone=${encodeURIComponent(customer.phone)}`
+      const url = import.meta.env.VITE_API_URL + `/api/invoices/due?phone=${encodeURIComponent(customer.phone)}`
       fetch(url)
         .then(async (r)=>{ if(!r.ok) throw new Error(await r.text()); return r.json() })
         .then((data)=>{ if(isMounted) setDueData(data) })
@@ -79,7 +80,7 @@ export default function Billing(){
   useEffect(()=>{
     let isMounted = true
     if(custQuery.length >= 2){
-      const url = `/api/customers?q=${encodeURIComponent(custQuery)}`
+      const url = import.meta.env.VITE_API_URL + `/api/customers?q=${encodeURIComponent(custQuery)}`
       fetch(url)
         .then(async (r)=>{ if(!r.ok) throw new Error(await r.text()); return r.json() })
         .then((data)=>{ if(isMounted) setCustResults(data) })
@@ -138,7 +139,7 @@ export default function Billing(){
     try{
       try{
         if (customer.name || customer.company || customer.phone || customer.address) {
-          await fetch('/api/customers', {
+          await fetch(import.meta.env.VITE_API_URL + '/api/customers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: customer.name || customer.company || 'Customer', companyName: customer.company || undefined, phone: customer.phone || undefined, address: customer.address || undefined })
@@ -161,7 +162,7 @@ export default function Billing(){
         previousDue: previousDue,
         items: cart.map(it=> ({ productId: it._id, qty: it.qty, unitPrice: Number(it.unitPrice), taxPercent: Number(it.taxPercent||0) }))
       }
-      const resp = await fetch('/api/invoices', {
+      const resp = await fetch(import.meta.env.VITE_API_URL + '/api/invoices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -179,12 +180,12 @@ export default function Billing(){
       setAutoSendWhatsapp(false)
       // Refresh products list after sale
       try{
-        const r = await fetch('/api/products')
+        const r = await fetch(import.meta.env.VITE_API_URL + '/api/products')
         if(r.ok){ setProducts(await r.json()) }
       } catch(_){}
       // Refresh owner stats after sale
       try{
-        const rs = await fetch('/api/invoices/owner-stats')
+        const rs = await fetch(import.meta.env.VITE_API_URL + '/api/invoices/owner-stats')
         if(rs.ok){ setStats(await rs.json()) }
       } catch(_){}
     } catch(err){

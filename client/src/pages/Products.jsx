@@ -14,7 +14,7 @@ export default function Products() {
   async function loadProducts(){
     try{
       setLoading(true)
-      const r = await fetch('/api/products')
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/products`)
       if(!r.ok) throw new Error(await r.text())
       setProducts(await r.json())
     } catch(e){ console.warn('Load products failed:', e?.message) }
@@ -38,7 +38,7 @@ export default function Products() {
         toast.error('Name and Selling Price are required')
         return
       }
-      const resp = await fetch('/api/products', {
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -60,7 +60,7 @@ export default function Products() {
   async function addStock(id, quantity){
     try{
       setAddingId(id)
-      const resp = await fetch(`/api/products/${id}/add-stock`, {
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}/add-stock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantity })
@@ -99,7 +99,7 @@ export default function Products() {
         taxPercent: Number(editRow.taxPercent||0),
         quantity: editRow.quantity!=='' ? Number(editRow.quantity||0) : undefined
       }
-      const resp = await fetch(`/api/products/${editRow._id}`, {
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${editRow._id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
