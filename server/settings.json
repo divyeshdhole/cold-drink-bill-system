@@ -1,0 +1,67 @@
+{
+  "business": {
+    "name": "My Business",
+    "address": "",
+    "city": "",
+    "state": "",
+    "country": "India",
+    "pincode": "",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "gstin": "",
+    "pan": "",
+    "bankDetails": {
+      "accountName": "",
+      "accountNumber": "",
+      "bankName": "",
+      "branch": "",
+      "ifsc": ""
+    }
+  },
+  "invoice": {
+    "prefix": "INV",
+    "nextNumber": 1000,
+    "dueDays": 15,
+    "taxRate": 18,
+    "currency": "₹",
+    "terms": "Payment due within {dueDays} days of invoice date.",
+    "notes": "Thank you for your business!",
+    "showSignature": true,
+    "showQRCode": true
+  },
+  "receipt": {
+    "terms": "Goods once sold will not be taken back or exchanged.",
+    "footer": "This is a computer generated receipt."
+  },
+  "theme": {
+    "primaryColor": "#3b82f6",
+    "secondaryColor": "#6b7280",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "notifications": {
+    "email": {
+      "enabled": false,
+      "host": "",
+      "port": 587,
+      "secure": false,
+      "auth": {
+        "user": "",
+        "pass": ""
+      },
+      "from": ""
+    },
+    "whatsapp": {
+      "enabled": false,
+      "accountSid": "",
+      "authToken": "",
+      "fromNumber": ""
+    }
+  },
+  "backup": {
+    "autoBackup": false,
+    "backupPath": "./backups",
+    "backupFrequency": "daily",
+    "keepLast": 5
+  }
+}
