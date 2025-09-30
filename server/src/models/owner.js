@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+//change file name
 const OwnerSchema = new mongoose.Schema({
   totalBills: { type: Number, default: 0 },
   totalAmount: { type: Number, default: 0 },
