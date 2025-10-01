@@ -294,6 +294,9 @@ export default function Billing(){
           </div>
           <div className="flex justify-between"><span>Rounding</span><span>₹ {money(totals.rounding)}</span></div>
           <div className="flex justify-between"><span>Previous Due</span><span>₹ {money(previousDue)}</span></div>
+          {dueData?.previousDueDate && (
+            <div className="text-xs text-gray-500 text-right">Due since: {new Date(dueData.previousDueDate).toLocaleString()}</div>
+          )}
           <div className="flex justify-between font-semibold text-lg"><span>Grand Total</span><span>₹ {money(grandTotal)}</span></div>
         </div>
 

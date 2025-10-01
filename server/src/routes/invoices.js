@@ -107,7 +107,7 @@ router.get('/due', async (req, res) => {
     // if (!phone) return res.status(400).json({ error: 'phone is required' });
     // const invoices = await Invoice.find({ customerPhone: phone, status: { $ne: 'paid' } });
     // const due = invoices.reduce((s, inv) => s + ((inv.total || 0) - (inv.amountPaid || 0)), 0);
-    res.json({ phone, due: customer.amountToPaid });
+    res.json({ phone, due: customer.amountToPaid, previousDueDate: customer.previosDueDate || null });
   } catch (e) {
     res.status(500).json({ error: 'Failed to compute due', details: e.message });
   }
