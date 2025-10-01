@@ -62,4 +62,15 @@ router.post('/:id/add-stock', async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id) return res.status(400).json({ error: 'Missing id' });
+    await Product.findByIdAndDelete(id);
+    return res.status(204).send();
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 export default router;

@@ -137,6 +137,23 @@ export default function Billing(){
   const [creating, setCreating] = useState(false)
   async function createInvoice(){
     try{
+      // Phone is mandatory for billing
+      if(!customer.phone){
+        toast.error('Customer phone is required')
+        return
+      }
+      // Confirm summary before creating invoice
+      const itemsCount = cart.reduce((s, it)=> s + it.qty, 0)
+      const lines = cart.map(it=> `${it.name} x${it.qty} @ ₹${money(it.unitPrice)}`).slice(0,4)
+      const more = cart.length>4 ? ` +${cart.length-4} more` : ''
+      const summary = [
+        `Items: ${itemsCount} (${lines.join(', ')}${more})`,
+        `Sub: ₹${money(totals.subTotal)}, Tax: ₹${money(totals.taxTotal)}, Discount: ₹${money(discount)}`,
+        `Prev Due: ₹${money(previousDue)}, Grand: ₹${money(grandTotal)}`,
+        `Pay: ${paymentMode.toUpperCase()}${customer.name? `, Customer: ${customer.name}`:''}${customer.phone? `, ${customer.phone}`:''}`
+      ].join('\n')
+      const ok = window.confirm(`Create invoice?\n\n${summary}`)
+      if(!ok){ toast.info('Cancelled'); return }
       try{
         if (customer.name || customer.company || customer.phone || customer.address) {
           await fetch(import.meta.env.VITE_API_URL + '/api/customers', {

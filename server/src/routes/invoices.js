@@ -134,7 +134,9 @@ router.get('/by-customer/search', async (req, res) => {
     const list = await Invoice.find(filter).sort({ createdAt: -1 });
     const paid = list.filter(i => i.status === 'paid');
     const pending = list.filter(i => i.status !== 'paid');
-    res.json({ paid, pending });
+    const customer = await Customer.findOne({phone: phone});
+    const previousDueDate = customer.previosDueDate;
+    res.json({ paid, pending, previousDueDate });
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch customer invoices', details: e.message });
   }

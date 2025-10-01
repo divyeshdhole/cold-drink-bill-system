@@ -7,6 +7,7 @@ export default function Products() {
   const [form, setForm] = useState({ name:'', brand:'', sizeMl:'', sellingPrice:'', taxPercent:0, quantity:'' })
   const [creating, setCreating] = useState(false)
   const [addingId, setAddingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const [editRow, setEditRow] = useState(null)
   const [savingId, setSavingId] = useState(null)
 
@@ -19,6 +20,24 @@ export default function Products() {
       setProducts(await r.json())
     } catch(e){ console.warn('Load products failed:', e?.message) }
     finally{ setLoading(false) }
+  }
+
+  async function deleteProduct(id){
+    try{
+      const prod = products.find(p=> p._id === id)
+      const name = prod?.name || 'this product'
+      const ok = window.confirm(`Delete ${name}? This cannot be undone.`)
+      if(!ok) return
+      setDeletingId(id)
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, { method: 'DELETE' })
+      if(!resp.ok) throw new Error(await resp.text())
+      await loadProducts()
+      toast.success('Product deleted')
+    } catch(e){
+      toast.error(e?.message || 'Failed to delete product')
+    } finally{
+      setDeletingId(null)
+    }
   }
 
   useEffect(()=>{ loadProducts() }, [])
@@ -211,6 +230,9 @@ export default function Products() {
                               <button className="btn" disabled={addingId===p._id} onClick={()=> addStock(p._id, 1)}>
                                 {addingId===p._id? 'Adding...' : '+1 stock'}
                               </button>
+                              <button className="btn" disabled={deletingId===p._id} onClick={()=> deleteProduct(p._id)}>
+                                {deletingId===p._id? 'Deleting...' : 'Delete'}
+                              </button>
                             </>
                           )}
                           {isEditing && (
@@ -302,6 +324,9 @@ export default function Products() {
                         <button className="btn flex-1" onClick={()=> startEdit(p)}>Edit</button>
                         <button className="btn flex-1" disabled={addingId===p._id} onClick={()=> addStock(p._id, 1)}>
                           {addingId===p._id? 'Adding...' : '+1 stock'}
+                        </button>
+                        <button className="btn flex-1" disabled={deletingId===p._id} onClick={()=> deleteProduct(p._id)}>
+                          {deletingId===p._id? 'Deleting...' : 'Delete'}
                         </button>
                       </>
                     )}
