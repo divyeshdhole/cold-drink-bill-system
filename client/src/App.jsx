@@ -41,7 +41,10 @@ export default function App(){
           <h1 className="font-bold text-lg tracking-tight flex-1">Cold Drink Billing</h1>
           {token ? (
             <>
-            {/* Mobile-only Logout button in header */}
+            {/* Mobile-only header actions: Settings and Logout */}
+            <NavLink to="/settings" className="md:hidden p-2 rounded hover:bg-slate-100 active:bg-slate-200" aria-label="Settings">
+              <FiSettings size={20} />
+            </NavLink>
             <button className="md:hidden p-2 rounded hover:bg-slate-100 active:bg-slate-200" onClick={handleLogout} aria-label="Logout">
               <FiLogOut size={20} />
             </button>
