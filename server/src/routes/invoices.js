@@ -47,6 +47,8 @@ const invoiceSchema = z.object({
   discount: z.number().min(0).optional().default(0),
   paymentMode: z.enum(['cash', 'upi', 'card']).optional().default('upi'),
   previousDue: z.number().min(0).optional().default(0),
+  // optional snapshot date string from client (ISO)
+  previousDueDateSnapshot: z.string().optional(),
   autoSendWhatsapp: z.boolean().optional().default(false)
 });
 
@@ -134,9 +136,7 @@ router.get('/by-customer/search', async (req, res) => {
     const list = await Invoice.find(filter).sort({ createdAt: -1 });
     const paid = list.filter(i => i.status === 'paid');
     const pending = list.filter(i => i.status !== 'paid');
-    const customer = await Customer.findOne({phone: phone});
-    const previousDueDate = customer.previosDueDate;
-    res.json({ paid, pending, previousDueDate });
+    res.json({ paid, pending});
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch customer invoices', details: e.message });
   }
@@ -275,8 +275,8 @@ router.post('/:id/send-whatsapp', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const data = invoiceSchema.parse(req.body);
-    console.log(data)
     // compute totals
+    console.log(JSON.stringify(data) + "----------------------------------------------------")
     const populatedItems = [];
     let subTotal = 0;
     let taxTotal = 0;
@@ -308,31 +308,42 @@ router.post('/', async (req, res) => {
     const rounding = roundTo2(Math.round(currentTotal) - currentTotal);
     currentTotal = roundTo2(currentTotal + rounding);
 
-    // previous unpaid due by phone
-    let previousDue = 0;
-    if (data.customerPhone) {
-      previousDue = Number(data.previousDue);
-    }
+    // Derive previous due from customer's rolling balance (authoritative)
+    const customerDoc = data.customerPhone ? await Customer.findOne({ phone: data.customerPhone }) : null;
+    const prevBalance = Number(customerDoc?.amountToPaid || 0);
+    const previousDue = prevBalance;
     const total = roundTo2(currentTotal + previousDue);
-    // Update customer's rolling balance: add ONLY the current bill amount
-    // so older dues remain independent and are not double-counted
-    const customer = await Customer.findOne({ phone: data.customerPhone });
-    if (customer) {
-      const prevBalance = Number(customer.amountToPaid || 0);
-      customer.amountToPaid = roundTo2(prevBalance + currentTotal);
-      customer.previosDueDate = new Date();
-      await customer.save();
+
+    // Update customer's rolling balance by adding only the current bill amount
+    if (customerDoc) {
+      const nextBalance = roundTo2(prevBalance + currentTotal);
+      // If no prior due, clear the due-start date; if prior due exists, keep as-is
+      customerDoc.amountToPaid = nextBalance;
+      customerDoc.previosDueDate = new Date();
+      await customerDoc.save();
     }
+
+    // Owner aggregates update for NEW bill amount only
     const owner = await getOwner();
     owner.totalBills += 1;
-    // Only add the NEW bill amount to aggregates. Previous dues were already counted earlier.
     owner.totalAmount += currentTotal;
     owner.totalPending += currentTotal;
-
     await owner.save();
-    console.log("the owner is ",owner);
-    const number = 'INV-' + Date.now();
 
+    // Decide previousDueDateSnapshot to store on invoice
+    let previousDueDateSnapshot = null;
+    if (previousDue > 0) {
+      if (data.previousDueDateSnapshot) {
+        const d = new Date(data.previousDueDateSnapshot);
+        if (!isNaN(d.getTime())) previousDueDateSnapshot = d;
+      }
+      if (!previousDueDateSnapshot && customerDoc?.previosDueDate) {
+        previousDueDateSnapshot = customerDoc.previosDueDate;
+      }
+    }
+
+    // Create invoice document
+    const number = 'INV-' + Date.now();
     const created = await Invoice.create({
       number,
       customerName: data.customerName,
@@ -348,6 +359,7 @@ router.post('/', async (req, res) => {
       amountPaid: 0,
       status: 'pending',
       previousDue,
+      previousDueDateSnapshot,
       currentTotal,
       paymentMode: data.paymentMode
     });

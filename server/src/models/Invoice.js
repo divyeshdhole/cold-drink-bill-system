@@ -28,6 +28,8 @@ const invoiceSchema = new mongoose.Schema(
     currentTotal: { type: Number, default: 0 },
     // previousDue: carry-forward due from previous unpaid invoices for this customer
     previousDue: { type: Number, default: 0 },
+    // snapshot of customer's previous due start date at the time of invoice creation
+    previousDueDateSnapshot: { type: Date },
     total: { type: Number, required: true },
     paymentMode: { type: String, enum: ['cash', 'upi', 'card'], default: 'upi' },
     paymentRef: String,

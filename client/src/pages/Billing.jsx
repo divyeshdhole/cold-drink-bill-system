@@ -177,6 +177,8 @@ export default function Billing(){
         discount: Number(discount||0),
         autoSendWhatsapp,
         previousDue: previousDue,
+        // send snapshot of previous due start date for this invoice
+        previousDueDateSnapshot: dueData?.previousDueDate || undefined,
         items: cart.map(it=> ({ productId: it._id, qty: it.qty, unitPrice: Number(it.unitPrice), taxPercent: Number(it.taxPercent||0) }))
       }
       const resp = await fetch(import.meta.env.VITE_API_URL + '/api/invoices', {

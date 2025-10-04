@@ -47,6 +47,7 @@ export default function Customers() {
         if (!r.ok) throw new Error(await r.text())
         const data = await r.json()
         if (isMounted) setByCustomer(data)
+        console.log(JSON.stringify(data) + "date invoice")
       })
       .catch((e) => console.warn('Load invoices-by-customer failed:', e?.message))
     return () => {
@@ -252,7 +253,7 @@ export default function Customers() {
                   }}
                   owner={{ name: settings?.name, phone: settings?.phone, address: settings?.address, gstin: settings?.gstin, email: settings?.email, upi: { vpa: settings?.vpa, currency: settings?.currency||'INR' } }}
                   previousDue={prevDueToPass}
-                  previousDueDate={prevDueDateToPass}
+                  previousDueDateSnapshot={printInvoice.previousDueDateSnapshot}
                   includePrevInPayable={printContext === 'pending'}
                     />
                   )

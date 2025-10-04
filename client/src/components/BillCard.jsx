@@ -8,7 +8,7 @@ export default function BillCard({
   customer,
   owner,
   previousDue = 0,
-  previousDueDate,
+  previousDueDateSnapshot,
   includePrevInPayable = true,
   amountPaid
 }){
@@ -98,10 +98,10 @@ export default function BillCard({
             <div className="text-red-600 font-semibold">₹ {money(effectivePrevDue)}</div>
           </div>
         )}
-        {previousDueDate && Number(effectivePrevDue) > 0 && (
+        {previousDueDateSnapshot && Number(effectivePrevDue) > 0 && (
           <div className="flex justify-between">
             <div>Due As Of</div>
-            <div className="text-red-500">{new Date(previousDueDate).toLocaleString()}</div>
+            <div className="text-red-500">{new Date(previousDueDateSnapshot).toLocaleString()}</div>
           </div>
         )}
         <div className="border-t border-black my-2" />
