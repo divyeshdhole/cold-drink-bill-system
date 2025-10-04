@@ -18,6 +18,38 @@ const itemSchema = z.object({
   taxPercent: z.number().min(0).max(100).optional().default(0)
 });
 
+// Hard reset: wipe all business data (invoices, customers, transactions) and reset owner aggregates
+// WARNING: This endpoint is destructive. Protect it with auth in production.
+router.post('/hard-reset', async (_req, res) => {
+  try {
+    // Delete all invoices, customers, and transactions
+    await Invoice.deleteMany({});
+    await Customer.deleteMany({});
+    await Transaction.deleteMany({});
+    // Reset owner aggregates
+    const owner = await getOwner();
+    owner.totalBills = 0;
+    owner.totalAmount = 0;
+    owner.totalReceived = 0;
+    owner.totalPending = 0;
+    await owner.save();
+
+    res.json({ ok: true, message: 'All data wiped and owner totals reset' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to perform hard reset', details: e.message });
+  }
+});
+
+// Delete all transactions (dangerous; add auth in production)
+router.post('/transactions/delete-all', async (_req, res) => {
+  try {
+    const result = await Transaction.deleteMany({});
+    res.json({ ok: true, deletedCount: result.deletedCount || 0 });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete transactions', details: e.message });
+  }
+});
+
 // Generate a UPI QR PNG for the invoice total
 router.get('/:id/upi-qr.png', async (req, res) => {
   try {
@@ -59,6 +91,23 @@ router.get('/', async (_req, res) => {
   res.json(list);
 });
 
+// Bulk delete invoices (paid only)
+router.delete('/', async (req, res) => {
+  try{
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : []
+    if(ids.length === 0) return res.status(400).json({ error: 'ids array is required' })
+    // Find invoices and split by status
+    const found = await Invoice.find({ _id: { $in: ids } }, { _id:1, status:1 })
+    const paidIds = found.filter(i=> i.status === 'paid').map(i=> i._id)
+    const nonPaid = found.filter(i=> i.status !== 'paid').map(i=> String(i._id))
+    // Delete only paid
+    const r = await Invoice.deleteMany({ _id: { $in: paidIds } })
+    res.json({ deletedCount: r.deletedCount || 0, skipped: nonPaid })
+  }catch(e){
+    res.status(500).json({ error: 'Failed to delete invoices', details: e.message })
+  }
+})
+
 // Generate and stream invoice Image (PNG)
 router.get('/:id/image', async (req, res) => {
   try {
@@ -95,6 +144,26 @@ router.get('/owner-stats', async (_req, res) => {
     res.status(500).json({ error: 'Failed to load owner stats', details: e.message })
   }
 })
+
+// Reset owner aggregates to zero (dangerous; add auth in production)
+router.post('/owner-stats/reset', async (_req, res) => {
+  try {
+    const owner = await getOwner();
+    owner.totalBills = 0;
+    owner.totalAmount = 0;
+    owner.totalReceived = 0;
+    await owner.save();
+    res.json({ ok: true, message: 'Owner totals reset', owner: {
+      totalBills: owner.totalBills,
+      totalAmount: owner.totalAmount,
+      totalReceived: owner.totalReceived,
+      totalPending: owner.totalPending
+    }});
+    
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to reset owner totals', details: e.message });
+  }
+});
 
 
 
@@ -170,8 +239,13 @@ router.patch('/:id/status', async (req, res) => {
       const prevBalance = Number(customer.amountToPaid || 0);
       // Increase received by the actually settled balance
       owner.totalReceived += prevBalance;
-      // Decrease pending by the same amount to keep aggregates consistent
-      owner.totalPending = roundTo2(owner.totalPending - prevBalance);
+      // Decrease pending by the same amount to keep aggregates 
+      // pending cant be negative
+      if(owner.totalPending - prevBalance < 0){
+        owner.totalPending = 0;
+      } else {
+        owner.totalPending = roundTo2(owner.totalPending - prevBalance);
+      } 
       await owner.save();
 
       // Record a transaction for this payment

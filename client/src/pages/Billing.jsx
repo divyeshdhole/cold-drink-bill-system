@@ -15,6 +15,8 @@ export default function Billing(){
   const [discount, setDiscount] = useState(0)
   const [paymentMode, setPaymentMode] = useState('upi')
   const [autoSendWhatsapp, setAutoSendWhatsapp] = useState(false)
+  const [creating, setCreating] = useState(false)
+
   // Fetch settings (from backend only; backed by server .env)
   useEffect(()=>{
     let isMounted = true
@@ -44,6 +46,7 @@ export default function Billing(){
 
   // Owner stats (total bills, amount, received, pending)
   const [stats, setStats] = useState(null)
+  const [todayStats, setTodayStats] = useState(null)
   useEffect(()=>{
     let isMounted = true
     ;(async ()=>{
@@ -55,6 +58,20 @@ export default function Billing(){
       }catch(_){}
     })()
     return ()=>{ isMounted=false }
+  }, [])
+
+  // Load today's quick stats (payments received today, pending added today)
+  useEffect(()=>{
+    let isMounted = true
+    ;(async ()=>{
+      try{
+        const r = await fetch(import.meta.env.VITE_API_URL + '/api/transactions/stats/today')
+        if(!r.ok) throw new Error(await r.text())
+        const data = await r.json()
+        if(isMounted) setTodayStats(data)
+      }catch(_){ }
+    })()
+    return ()=>{ isMounted = false }
   }, [])
 
   // Fetch previous due by phone
@@ -134,7 +151,6 @@ export default function Billing(){
   const findProduct = (id)=> products?.find(p=> p._id === id)
   const hasExceeding = useMemo(()=> cart.some(it=> (it.qty || 0) > Number(findProduct(it._id)?.quantity || 0)), [cart, products])
 
-  const [creating, setCreating] = useState(false)
   async function createInvoice(){
     try{
       // Phone is mandatory for billing
@@ -237,6 +253,42 @@ export default function Billing(){
           </div>
         </div>
       )}
+      {/* Today stats (compact) */}
+      {todayStats && (
+        <div className="mb-4 grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="border rounded p-3 bg-white">
+            <div className="text-xs text-gray-500">Today Received</div>
+            <div className="text-lg font-semibold text-green-700">₹ {money(todayStats?.receivedToday)}</div>
+          </div>
+          <div className="border rounded p-3 bg-white">
+            <div className="text-xs text-gray-500">Today Pending</div>
+            <div className="text-lg font-semibold text-red-600">₹ {money(todayStats?.pendingToday)}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin actions */}
+      <div className="mb-4 flex items-center justify-end">
+        <button
+          className="btn border-red-300 text-red-700 hover:bg-red-50"
+          onClick={async ()=>{
+            const ok = window.confirm('Reset owner totals (bills, amount, received, pending) to 0? This cannot be undone.')
+            if(!ok) return
+            try{
+              const r = await fetch(import.meta.env.VITE_API_URL + '/api/invoices/owner-stats/reset', { method: 'POST' })
+              if(!r.ok) throw new Error(await r.text())
+              // refresh stats after reset
+              try{
+                const rs = await fetch(import.meta.env.VITE_API_URL + '/api/invoices/owner-stats')
+                if(rs.ok){ setStats(await rs.json()) }
+              }catch(_){ }
+              toast.success('Owner totals reset')
+            }catch(e){
+              toast.error(e?.message || 'Failed to reset owner totals')
+            }
+          }}
+        >Reset Owner Totals</button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-2 card">
         <h2 className="font-semibold mb-3">Select Products</h2>

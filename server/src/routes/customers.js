@@ -62,6 +62,44 @@ router.get('/pending', async (_req, res)=>{
   }
 })
 
+// Delete a customer and cleanup related data
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = req.params.id
+    const customer = await Customer.findById(id)
+    if (!customer) return res.status(404).json({ error: 'Customer not found' })
+    // Block deletion if customer still has pending balance
+    const pendingNow = Number(customer.amountToPaid || 0)
+    if (pendingNow > 0) {
+      return res.status(400).json({ error: 'Cannot delete customer with pending amount', pending: pendingNow })
+    }
+
+    // Adjust owner totals by removing this customer's pending from totalPending
+    const owner = await getOwner()
+    // Nothing to subtract because deletion is blocked when pending > 0
+    await owner.save()
+
+    // Delete related invoices and transactions
+    const phone = customer.phone || ''
+    const invResult = await Invoice.deleteMany({ customerPhone: phone })
+    const txnResult = await Transaction.deleteMany({ customer: customer._id })
+
+    // Delete the customer
+    await Customer.deleteOne({ _id: customer._id })
+
+    res.json({
+      ok: true,
+      deleted: {
+        customer: 1,
+        invoices: invResult.deletedCount || 0,
+        transactions: txnResult.deletedCount || 0
+      }
+    })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete customer', details: e.message })
+  }
+})
+
 // Decrease a customer's pending balance (amountToPaid) by a partial payment
 router.patch('/:phone/amount', async (req, res) => {
   try {
@@ -77,7 +115,12 @@ router.patch('/:phone/amount', async (req, res) => {
     await customer.save()
     const owner = await getOwner()
     owner.totalReceived += data.amount
-    owner.totalPending -= data.amount
+    //pending cant be negative
+    if(owner.totalPending - data.amount < 0){
+      owner.totalPending = 0
+    } else {
+      owner.totalPending -= data.amount
+    }
     await owner.save()
     // If balance reaches zero, mark all pending invoices for this customer as paid
     if (next === 0) {

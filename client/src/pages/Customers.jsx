@@ -15,6 +15,25 @@ export default function Customers() {
   const [showPreview, setShowPreview] = useState(false)
   const [printContext, setPrintContext] = useState('pending') // 'pending' | 'paid'
 
+  // Delete selected customer
+  async function deleteCustomer(id){
+    const ok = window.confirm('Delete this customer and all their invoices and transactions? This cannot be undone.')
+    if(!ok) return
+    try{
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/customers/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if(!r.ok) throw new Error(await r.text())
+      toast.success('Customer deleted')
+      // Clear selection and invoices
+      setSelected(null)
+      setByCustomer(null)
+      // Refresh customers list
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/customers?q=${encodeURIComponent(q)}`)
+      if(res.ok){ setCustomers(await res.json()) }
+    }catch(e){
+      toast.error(e?.message || 'Failed to delete customer')
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
     const fetchCustomers = async () => {
@@ -151,7 +170,15 @@ export default function Customers() {
       </div>
 
       <div className="md:col-span-2 bg-white p-4 rounded shadow">
-        <h2 className="font-semibold mb-3">Invoices</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">Invoices</h2>
+          {selected && (
+            <button
+              className="btn border-red-300 text-red-700 hover:bg-red-50"
+              onClick={()=> deleteCustomer(selected._id)}
+            >Delete Customer</button>
+          )}
+        </div>
         {!selected && (
           <div className="text-sm text-gray-500">
             Select a customer to view invoices
@@ -161,24 +188,26 @@ export default function Customers() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="font-semibold mb-2">Pending</h3>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {byCustomer?.pending?.map((inv, idx) => (
                   <div
                     key={inv._id}
-                    className="border rounded p-2 text-sm flex items-center justify-between"
+                    className="border rounded-lg p-3 text-sm flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
                   >
-                    <div>
-                      <div className="font-medium">{inv.number}</div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(inv.createdAt).toLocaleString()} · ₹{' '}
-                        {Number(inv.total).toFixed(2)}
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate flex items-center gap-2">
+                        <span className="truncate">{inv.number}</span>
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">₹ {Number(inv.total).toFixed(2)}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {new Date(inv.createdAt).toLocaleString()}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button className="btn" onClick={()=> viewBill(inv, 'pending')}>View Bill</button>
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2 w-full md:w-auto">
+                      <button className="btn w-full md:w-auto" onClick={()=> viewBill(inv, 'pending')}>View Bill</button>
                       {idx === 0 && (
                         <button
-                          className="btn-primary"
+                          className="btn-primary w-full md:w-auto"
                           disabled={updatingId === inv._id}
                           onClick={() => {
                             const ok = window.confirm('Mark this invoice and all previous pending invoices as paid?')
