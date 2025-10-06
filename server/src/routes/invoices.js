@@ -196,13 +196,12 @@ router.get('/by-customer/search', async (req, res) => {
     const phone = (req.query.phone || '').toString().trim();
     const name = (req.query.name || '').toString().trim();
     const company = (req.query.company || '').toString().trim();
-    const filter = {};
-    if (phone) filter.customerPhone = phone;
-    if (name) filter.customerName = name;
-    if (company) filter.customerCompany = company;
+    
+    
     if (!phone && !name && !company) return res.status(400).json({ error: 'Provide phone, name, or company to search' });
-
-    const list = await Invoice.find(filter).sort({ createdAt: -1 });
+    // console.log(phone)
+    const list = await Invoice.find({customerPhone: phone}).sort({ createdAt: -1 });
+    
     const paid = list.filter(i => i.status === 'paid');
     const pending = list.filter(i => i.status !== 'paid');
     res.json({ paid, pending});
@@ -350,6 +349,11 @@ router.post('/', async (req, res) => {
   try {
     const data = invoiceSchema.parse(req.body);
     // compute totals
+    //trim all the data
+    data.customerName = data.customerName?.trim()
+    data.customerPhone = data.customerPhone?.trim()
+    data.customerAddress = data.customerAddress?.trim()
+    data.paymentMode = data.paymentMode?.trim()
     console.log(JSON.stringify(data) + "----------------------------------------------------")
     const populatedItems = [];
     let subTotal = 0;

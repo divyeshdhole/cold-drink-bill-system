@@ -47,9 +47,10 @@ router.get('/stats/today', async (_req, res) => {
       }
     ]);
 
-    const pendingToday = Number(pendingSales?.[0]?.totalPending || 0) - receivedToday;
+    // Calculate pending but never negative
+    let pendingToday = Number(pendingSales?.[0]?.totalPending || 0) - receivedToday;
+    if (pendingToday < 0) pendingToday = 0;
 
-    // ✅ Send both separately — don't subtract, they represent different flows
     res.json({ receivedToday, pendingToday });
 
   } catch (e) {

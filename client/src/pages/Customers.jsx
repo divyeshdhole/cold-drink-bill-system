@@ -26,6 +26,7 @@ export default function Customers() {
       toast.success('Customer deleted')
       setSelected(null)
       setByCustomer(null)
+
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/customers?q=${encodeURIComponent(q)}`)
       if(res.ok){ setCustomers(await res.json()) }
     }catch(e){
@@ -40,6 +41,7 @@ export default function Customers() {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/customers?q=${encodeURIComponent(q)}`)
         const data = await res.json()
+        console.log(JSON.stringify(data) + "data is")
         if (isMounted) setCustomers(data)
       } catch (err) {
         console.error('Error fetching customers:', err)
@@ -64,6 +66,7 @@ export default function Customers() {
       .then(async (r) => {
         if (!r.ok) throw new Error(await r.text())
         const data = await r.json()
+        console.log(data)
         if (isMounted) setByCustomer(data)
       })
       .catch((e) => console.warn('Load invoices-by-customer failed:', e?.message))
