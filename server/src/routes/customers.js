@@ -32,7 +32,14 @@ router.get('/', async (req, res)=>{
 // Create customer
 router.post('/', async (req, res)=>{
   try {
+    
     const data = customerSchema.parse(req.body)
+    //while creating customer trim all body data spaces
+    data.name = data.name.trim()
+    data.companyName = data.companyName?.trim()
+    data.phone = data.phone?.trim()
+    data.address = data.address?.trim()
+    
     // upsert by phone if provided
     let created
     if(data.phone){

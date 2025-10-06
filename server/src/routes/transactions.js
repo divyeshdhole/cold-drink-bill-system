@@ -47,7 +47,7 @@ router.get('/stats/today', async (_req, res) => {
       }
     ]);
 
-    const pendingToday = Number(pendingSales?.[0]?.totalPending || 0);
+    const pendingToday = Number(pendingSales?.[0]?.totalPending || 0) - receivedToday;
 
     // ✅ Send both separately — don't subtract, they represent different flows
     res.json({ receivedToday, pendingToday });

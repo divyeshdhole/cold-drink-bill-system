@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { toPng } from 'html-to-image'
 import BillCard from '../components/BillCard.jsx'
 
 export default function Customers() {
@@ -15,7 +16,7 @@ export default function Customers() {
   const [showPreview, setShowPreview] = useState(false)
   const [printContext, setPrintContext] = useState('pending') // 'pending' | 'paid'
 
-  // Delete selected customer
+  // 🔹 Delete selected customer
   async function deleteCustomer(id){
     const ok = window.confirm('Delete this customer and all their invoices and transactions? This cannot be undone.')
     if(!ok) return
@@ -23,10 +24,8 @@ export default function Customers() {
       const r = await fetch(`${import.meta.env.VITE_API_URL}/api/customers/${encodeURIComponent(id)}`, { method: 'DELETE' })
       if(!r.ok) throw new Error(await r.text())
       toast.success('Customer deleted')
-      // Clear selection and invoices
       setSelected(null)
       setByCustomer(null)
-      // Refresh customers list
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/customers?q=${encodeURIComponent(q)}`)
       if(res.ok){ setCustomers(await res.json()) }
     }catch(e){
@@ -34,6 +33,7 @@ export default function Customers() {
     }
   }
 
+  // 🔹 Fetch all customers
   useEffect(() => {
     let isMounted = true
     const fetchCustomers = async () => {
@@ -46,11 +46,10 @@ export default function Customers() {
       }
     }
     fetchCustomers()
-    return () => {
-      isMounted = false
-    }
+    return () => { isMounted = false }
   }, [q])
 
+  // 🔹 Fetch invoices by selected customer
   useEffect(() => {
     let isMounted = true
     if (!selected) {
@@ -66,26 +65,22 @@ export default function Customers() {
         if (!r.ok) throw new Error(await r.text())
         const data = await r.json()
         if (isMounted) setByCustomer(data)
-        console.log(JSON.stringify(data) + "date invoice")
       })
       .catch((e) => console.warn('Load invoices-by-customer failed:', e?.message))
-    return () => {
-      isMounted = false
-    }
+    return () => { isMounted = false }
   }, [selected?.phone, selected?.name, selected?.companyName])
 
-  // Load owner/settings for bill and QR (from backend only)
+  // 🔹 Load settings / UPI details
   useEffect(() => {
     let isMounted = true
     fetch(`${import.meta.env.VITE_API_URL}/api/settings/upi`)
       .then(async (r)=>{ if(!r.ok) throw new Error(await r.text()); return r.json() })
-        
-      .then((data)=>{ if(isMounted) { setSettings(data); console.log(data) } })
+      .then((data)=>{ if(isMounted) setSettings(data) })
       .catch(()=>{})
     return ()=>{ isMounted=false }
   }, [])
 
-  // Load previous due for selected customer
+  // 🔹 Load previous due
   useEffect(()=>{
     let isMounted = true
     if(selected?.phone){
@@ -99,9 +94,9 @@ export default function Customers() {
     return ()=>{ isMounted=false }
   }, [selected?.phone])
 
+  // 🔹 View Bill
   async function viewBill(inv, context='pending'){
     try{
-      // Always refresh latest due before preview so values are up-to-date
       if(selected?.phone){
         const r = await fetch(`${import.meta.env.VITE_API_URL}/api/invoices/due?phone=${encodeURIComponent(selected.phone)}`)
         if(r.ok){ setDueData(await r.json()) }
@@ -122,7 +117,6 @@ export default function Customers() {
         body: JSON.stringify({ status, amountPaid, paymentRef })
       })
       if (!resp.ok) throw new Error(await resp.text())
-      // refresh invoices for selected
       if (selected) {
         const params = new URLSearchParams()
         if (selected?.phone) params.set('phone', selected.phone)
@@ -139,8 +133,24 @@ export default function Customers() {
     }
   }
 
+  // 🔹 Download Bill as Image
+  async function downloadBill() {
+    if (!printRef.current) return;
+    try {
+      const dataUrl = await toPng(printRef.current, { quality: 1.0, cacheBust: true });
+      const link = document.createElement('a');
+      link.download = `${printInvoice?.number || 'invoice'}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      toast.error('Failed to download bill');
+      console.error('Error generating image:', error);
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* 🔹 Customers List */}
       <div className="bg-white p-4 rounded shadow">
         <h2 className="font-semibold mb-3">Customers</h2>
         <input
@@ -169,6 +179,7 @@ export default function Customers() {
         </div>
       </div>
 
+      {/* 🔹 Invoice Section */}
       <div className="md:col-span-2 bg-white p-4 rounded shadow">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold">Invoices</h2>
@@ -186,18 +197,18 @@ export default function Customers() {
         )}
         {selected && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 🔹 Pending Invoices */}
             <div>
               <h3 className="font-semibold mb-2">Pending</h3>
               <div className="space-y-3">
                 {byCustomer?.pending?.map((inv, idx) => (
-                  <div
-                    key={inv._id}
-                    className="border rounded-lg p-3 text-sm flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
-                  >
+                  <div key={inv._id} className="border rounded-lg p-3 text-sm flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div className="min-w-0">
                       <div className="font-semibold truncate flex items-center gap-2">
                         <span className="truncate">{inv.number}</span>
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">₹ {Number(inv.total).toFixed(2)}</span>
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                          ₹ {Number(inv.total).toFixed(2)}
+                        </span>
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
                         {new Date(inv.createdAt).toLocaleString()}
@@ -226,14 +237,13 @@ export default function Customers() {
                 )}
               </div>
             </div>
+
+            {/* 🔹 Paid Invoices */}
             <div>
               <h3 className="font-semibold mb-2">Paid</h3>
               <div className="space-y-2">
                 {byCustomer?.paid?.map((inv) => (
-                  <div
-                    key={inv._id}
-                    className="border rounded p-2 text-sm flex items-center justify-between"
-                  >
+                  <div key={inv._id} className="border rounded p-2 text-sm flex items-center justify-between">
                     <div>
                       <div className="font-medium">{inv.number}</div>
                       <div className="text-xs text-gray-500">
@@ -254,7 +264,8 @@ export default function Customers() {
           </div>
         )}
       </div>
-      {/* Preview Modal */}
+
+      {/* 🔹 Preview Modal */}
       {showPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={()=> setShowPreview(false)} />
@@ -273,24 +284,32 @@ export default function Customers() {
                     : (isNewestPending ? (dueData?.asOf || dueData?.date || dueData?.updatedAt || null) : null)
                   return (
                     <BillCard
-                  invoice={printInvoice}
-                  customer={{
-                    name: selected?.name,
-                    companyName: selected?.companyName,
-                    phone: selected?.phone,
-                    address: selected?.address
-                  }}
-                  owner={{ name: settings?.name, phone: settings?.phone, address: settings?.address, gstin: settings?.gstin, email: settings?.email, upi: { vpa: settings?.vpa, currency: settings?.currency||'INR' } }}
-                  previousDue={prevDueToPass}
-                  previousDueDateSnapshot={printInvoice.previousDueDateSnapshot}
-                  includePrevInPayable={printContext === 'pending'}
+                      invoice={printInvoice}
+                      customer={{
+                        name: selected?.name,
+                        companyName: selected?.companyName,
+                        phone: selected?.phone,
+                        address: selected?.address
+                      }}
+                      owner={{
+                        name: settings?.name,
+                        phone: settings?.phone,
+                        address: settings?.address,
+                        gstin: settings?.gstin,
+                        email: settings?.email,
+                        upi: { vpa: settings?.vpa, currency: settings?.currency||'INR' }
+                      }}
+                      previousDue={prevDueToPass}
+                      previousDueDateSnapshot={printInvoice.previousDueDateSnapshot}
+                      includePrevInPayable={printContext === 'pending'}
                     />
                   )
                 })()}
               </div>
             )}
-            <div className="mt-3 flex justify-center">
+            <div className="mt-3 flex justify-center gap-3">
               <button className="btn" onClick={()=> setShowPreview(false)}>Close</button>
+              <button className="btn-primary" onClick={downloadBill}>Download as Image</button>
             </div>
           </div>
         </div>
