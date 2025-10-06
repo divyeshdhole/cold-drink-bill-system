@@ -31,7 +31,7 @@ router.get('/stats/today', async (_req, res) => {
     ]);
     const receivedToday = Number(payments?.[0]?.total || 0);
 
-    // 2️⃣ Total pending amount from invoices created today
+    // 2️⃣ Total pending amount from invoices created today (still pending)
     const pendingSales = await Invoice.aggregate([
       {
         $match: {
@@ -47,10 +47,9 @@ router.get('/stats/today', async (_req, res) => {
       }
     ]);
 
-    // Calculate pending but never negative
-    let pendingToday = Number(pendingSales?.[0]?.totalPending || 0) - receivedToday;
-    if (pendingToday < 0) pendingToday = 0;
+    const pendingToday = Number(pendingSales?.[0]?.totalPending || 0);
 
+    // Send both independently
     res.json({ receivedToday, pendingToday });
 
   } catch (e) {
