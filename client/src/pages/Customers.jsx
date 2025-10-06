@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { toPng } from 'html-to-image'
+import { toPng, toCanvas } from 'html-to-image'
+import { FiX, FiShare2 } from 'react-icons/fi'
 import BillCard from '../components/BillCard.jsx'
 
 export default function Customers() {
@@ -137,10 +138,57 @@ export default function Customers() {
   }
 
   // 🔹 Download Bill as Image
+  // Render bill to canvas with transparent background and trimmed margins
+  async function renderBillCanvas() {
+    const node = printRef.current
+    if (!node) throw new Error('No bill to render')
+    const canvas = await toCanvas(node, {
+      cacheBust: true,
+      pixelRatio: 2,
+      backgroundColor: 'transparent',
+      style: {
+        margin: '0',
+        padding: '0',
+        background: 'transparent'
+      }
+    })
+    return trimTransparent(canvas)
+  }
+
+  function trimTransparent(sourceCanvas){
+    const ctx = sourceCanvas.getContext('2d')
+    const w = sourceCanvas.width, h = sourceCanvas.height
+    const imgData = ctx.getImageData(0,0,w,h)
+    const data = imgData.data
+    let top = null, left = null, right = null, bottom = null
+    for(let y=0; y<h; y++){
+      for(let x=0; x<w; x++){
+        const idx = (y*w + x)*4
+        const alpha = data[idx+3]
+        if(alpha !== 0){
+          if(top===null) top = y
+          if(left===null || x<left) left = x
+          if(right===null || x>right) right = x
+          bottom = y
+        }
+      }
+    }
+    if(top===null){
+      return sourceCanvas // fully transparent fallback
+    }
+    const tw = right-left+1, th = bottom-top+1
+    const trimmed = document.createElement('canvas')
+    trimmed.width = tw; trimmed.height = th
+    const tctx = trimmed.getContext('2d')
+    tctx.drawImage(sourceCanvas, left, top, tw, th, 0, 0, tw, th)
+    return trimmed
+  }
+
   async function downloadBill() {
     if (!printRef.current) return;
     try {
-      const dataUrl = await toPng(printRef.current, { quality: 1.0, cacheBust: true });
+      const canvas = await renderBillCanvas()
+      const dataUrl = canvas.toDataURL('image/png')
       const link = document.createElement('a');
       link.download = `${printInvoice?.number || 'invoice'}.png`;
       link.href = dataUrl;
@@ -148,6 +196,93 @@ export default function Customers() {
     } catch (error) {
       toast.error('Failed to download bill');
       console.error('Error generating image:', error);
+    }
+  }
+
+  // 🔹 Share Bill via WhatsApp
+  function formatMoney(n){ return (Number(n||0)).toFixed(2) }
+  function getServerBase(){
+    const envBase = import.meta?.env?.VITE_SERVER_PUBLIC_URL
+    if(envBase) return envBase.replace(/\/$/, '')
+    const { protocol, hostname } = window.location
+    return `${protocol}//${hostname}:5000`
+  }
+  function buildWaText(inv){
+    if(!inv) return ''
+    const store = settings?.name || 'Invoice'
+    const header = `*${store}*\nInvoice No: ${inv.number}`
+    const when = inv.createdAt ? new Date(inv.createdAt).toLocaleString() : ''
+    const customerLines = [
+      selected?.name ? `Customer: ${selected.name}` : null,
+      selected?.phone ? `Phone: ${selected.phone}` : null,
+      selected?.address ? `Address: ${selected.address}` : null,
+      selected?.companyName ? `Company: ${selected.companyName}` : null,
+    ].filter(Boolean)
+    const itemLines = (inv.items||[]).map(i=> `• ${i.nameSnapshot} x${i.qty} @ ₹${formatMoney(i.unitPrice)} = ₹${formatMoney(i.lineTotal)}`)
+    const totals = [
+      `Subtotal: ₹${formatMoney(inv.subTotal)}`,
+      `Tax: ₹${formatMoney(inv.taxTotal)}`,
+      inv.discount ? `Discount: -₹${formatMoney(inv.discount)}` : null,
+      inv.rounding ? `Rounding: ₹${formatMoney(inv.rounding)}` : null,
+      inv.previousDue ? `Previous Due: ₹${formatMoney(inv.previousDue)}` : null,
+      `*TOTAL: ₹${formatMoney(inv.total)}*`
+    ].filter(Boolean)
+    const imgUrl = `${getServerBase()}/api/invoices/${inv._id}/image`
+    const lines = [
+      header,
+      when ? `Date: ${when}` : null,
+      customerLines.length? customerLines.join('\n') : null,
+      '',
+      '*Items*',
+      ...itemLines,
+      '',
+      ...totals,
+      '',
+      '*Invoice Image*',
+      imgUrl,
+    ].filter(Boolean)
+    return encodeURIComponent(lines.join('\n'))
+  }
+  function buildWaHref(inv){
+    const raw = (selected?.phone || '').toString()
+    const phone = raw.replace(/\D/g, '')
+    const text = buildWaText(inv)
+    return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`
+  }
+  function shareBill(){
+    if(!printInvoice){ toast.info('No invoice selected'); return }
+    const url = buildWaHref(printInvoice)
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  // 🔹 Share the image file (like gallery share) via Web Share API (Android Chrome)
+  async function shareBillImage(){
+    try{
+      if(!printRef.current){ toast.info('Open a bill preview first'); return }
+      if(!('share' in navigator)){
+        toast.info('Sharing not supported on this browser');
+        return
+      }
+      // Render trimmed canvas and convert to Blob
+      const canvas = await renderBillCanvas()
+      const dataUrl = canvas.toDataURL('image/png')
+      const resp = await fetch(dataUrl)
+      const blob = await resp.blob()
+      const fileName = `${printInvoice?.number || 'invoice'}.png`
+      const file = new File([blob], fileName, { type: 'image/png' })
+      const shareData = {
+        files: [file],
+        text: `Invoice ${printInvoice?.number || ''}`,
+        title: 'Invoice'
+      }
+      if('canShare' in navigator && !navigator.canShare(shareData)){
+        toast.info('Cannot share image file on this device')
+        return
+      }
+      await navigator.share(shareData)
+    }catch(e){
+      console.error(e)
+      toast.error('Failed to share image')
     }
   }
 
@@ -310,9 +445,23 @@ export default function Customers() {
                 })()}
               </div>
             )}
-            <div className="mt-3 flex justify-center gap-3">
-              <button className="btn" onClick={()=> setShowPreview(false)}>Close</button>
-              <button className="btn-primary" onClick={downloadBill}>Download as Image</button>
+            <div className="mt-3 flex items-center justify-center gap-4">
+              <button
+                className="p-2 rounded-full hover:bg-slate-100 active:bg-slate-200"
+                onClick={()=> setShowPreview(false)}
+                aria-label="Close preview"
+                title="Close"
+              >
+                <FiX size={20} />
+              </button>
+              <button
+                className="p-2 rounded-full hover:bg-slate-100 active:bg-slate-200"
+                onClick={shareBillImage}
+                aria-label="Share image"
+                title="Share Image"
+              >
+                <FiShare2 size={20} />
+              </button>
             </div>
           </div>
         </div>
