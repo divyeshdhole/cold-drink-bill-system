@@ -72,6 +72,8 @@ export default function App(){
           <Route path="/pending" element={<RequireAuth><Pending/></RequireAuth>} />
           <Route path="/invoices" element={<RequireAuth><Invoices/></RequireAuth>} />
           <Route path="/settings" element={<RequireAuth><Settings/></RequireAuth>} />
+          {/* if route is /assets redirect to home /*/}
+          <Route path="/assets/*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
